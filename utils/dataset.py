@@ -7,7 +7,8 @@ import logging
 from PIL import Image
 
 
-class LAIDataset(Dataset):
+class PAIDataset(Dataset):
+    """A dataset class suitable for the segmentation task with scaling and augmentation transformations"""
     def __init__(self, imgs_dir, masks_dir, scale=1, transform=None):
         self.imgs_dir = imgs_dir
         self.masks_dir = masks_dir

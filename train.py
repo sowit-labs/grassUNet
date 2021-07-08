@@ -13,14 +13,14 @@ from eval import eval_net
 from unet import UNet
 
 from torch.utils.tensorboard import SummaryWriter
-from utils.dataset import LAIDataset
+from utils.dataset import PAIDataset
 from utils.transforms import Transformer
 from torch.utils.data import DataLoader, random_split
 
-dir_train = '../data-train-val-test-520-390/train_aug_bcgsFRSo/'
-dir_val = '../data-train-val-test-520-390/val/'
-dir_test = '../data-train-val-test-520-390/test/'
-dir_test_hum = '../data-train-val-test-520-390/test-hum/'
+dir_train = 'train/'
+dir_val = 'val/'
+dir_test = 'test/'
+dir_test_hum = 'test-hum/'
 
 subdir_img = 'img/'
 subdir_mask = 'mask-veg/'
@@ -29,52 +29,28 @@ dir_checkpoint = './checkpoint/'
 
 def train_net(net,
               device,
+              datadir='./data/',
               epochs=5,
               batch_size=1,
               lr=0.001,
               save_cp=True,
               img_scale=0.5,
-              data_aug="",
-              threshold_eval=0.5):
-    if type(data_aug) is str:
-        brange=(1,1)
-        crange=(1,1)
-        grange=(1,1)
-        srange=(1,1)
-        hbool=False
-        crop=False
-        rotate=0
-        shear=0
+              humantest=True):
+    """Function to train the U-Net segmentation model from a dataset"""
+
+    transforms = None
         
-        if 'b' in data_aug:
-            brange=(0.75,1.5)
-        if 'c' in data_aug:
-            crange=(0.75,1.5)
-        if 'g' in data_aug:
-            grange=(0.75,2)
-        if 's' in data_aug:
-            srange=(0.75,2)
-        if 'F' in data_aug:
-            hbool=True
-        if 'C' in data_aug:
-            crop=True
-        if 'R' in data_aug:
-            rotate=20
-        if 'S' in data_aug:
-            shear=15
-        transforms = Transformer(brightness_range=brange, contrast_range=crange, gamma_range=grange, saturation_range=srange, hflip=hbool, crop=crop, rotate=rotate, shear=shear)
-    else:
-        transforms = None
-        
-    dataset_train = LAIDataset(dir_train+subdir_img, dir_train+subdir_mask, img_scale, transform=transforms)
-    dataset_val = LAIDataset(dir_val+subdir_img, dir_val+subdir_mask, img_scale, transform=None)
-    dataset_test = LAIDataset(dir_test+subdir_img, dir_test+subdir_mask, img_scale, transform=None)
-    dataset_test_hum = LAIDataset(dir_test_hum+subdir_img, dir_test_hum+subdir_mask, img_scale, transform=None)
+    dataset_train = PAIDataset(os.path.join(datadir,dir_train,subdir_img), os.path.join(datadir,dir_train,subdir_mask), img_scale, transform=transforms)
+    dataset_val = PAIDataset(os.path.join(datadir,dir_val,subdir_img), os.path.join(datadir,dir_val,subdir_mask), img_scale, transform=None)
+    dataset_test = PAIDataset(os.path.join(datadir,dir_test,subdir_img), os.path.join(datadir,dir_test,subdir_mask), img_scale, transform=None)
+    if humantest:
+        dataset_test_hum = PAIDataset(os.path.join(datadir,dir_test_hum,subdir_img), os.path.join(datadir,dir_test_hum,subdir_mask), img_scale, transform=None)
     
     train_loader = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
     val_loader = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     test_loader = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
-    test_hum_loader = DataLoader(dataset_test_hum, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
+    if humantest:
+        test_hum_loader = DataLoader(dataset_test_hum, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
 
     writer = SummaryWriter(comment=f'LR_{lr}_BS_{batch_size}_SCALE_{img_scale}_AUG_{data_aug}')
     global_step = 0
@@ -86,10 +62,10 @@ def train_net(net,
         Training size:   {len(dataset_train)}
         Validation size: {len(dataset_val)}
         Test size:       {len(dataset_test)}
+        Human test size: {len(dataset_test_hum) if humantest else 0}
         Checkpoints:     {save_cp}
         Device:          {device.type}
         Images scaling:  {img_scale}
-        Data augmentation: {data_aug}
     ''')
 
     optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
@@ -135,7 +111,7 @@ def train_net(net,
                         tag = tag.replace('.', '/')
                         writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), global_step)
                         writer.add_histogram('grads/' + tag, value.grad.data.cpu().numpy(), global_step)
-                    val_score = eval_net(net, val_loader, device, threshold_eval)
+                    val_score = eval_net(net, val_loader, device)
                     scheduler.step(val_score)
                     writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], global_step)
 
@@ -158,14 +134,15 @@ def train_net(net,
         else:
             logging.info('Test Dice Coeff: {}'.format(test_score))
             writer.add_scalar('Dice/test', test_score, global_step)
-            
-        test_hum_score = eval_net(net, test_hum_loader, device, threshold_eval)
-        if net.n_classes > 1:
-            logging.info('Test human cross entropy: {}'.format(test_hum_score))
-            writer.add_scalar('Loss/testHuman', test_hum_score, global_step)
-        else:
-            logging.info('Test human Dice Coeff: {}'.format(test_hum_score))
-            writer.add_scalar('Dice/testHuman', test_hum_score, global_step)
+        
+        if humantest:
+            test_hum_score = eval_net(net, test_hum_loader, device, threshold_eval)
+            if net.n_classes > 1:
+                logging.info('Test human cross entropy: {}'.format(test_hum_score))
+                writer.add_scalar('Loss/testHuman', test_hum_score, global_step)
+            else:
+                logging.info('Test human Dice Coeff: {}'.format(test_hum_score))
+                writer.add_scalar('Dice/testHuman', test_hum_score, global_step)
 
         if save_cp:
             try:
@@ -181,8 +158,11 @@ def train_net(net,
 
 
 def get_args():
+    """Arguments for the CLI"""
     parser = argparse.ArgumentParser(description='Train the UNet on images and target masks',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-d', '--data', metavar='D', type=str, default="data",
+                        help='Dataset directory path', dest='datadir')
     parser.add_argument('-e', '--epochs', metavar='E', type=int, default=5,
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=1,
@@ -193,21 +173,19 @@ def get_args():
                         help='Load model from a .pth file')
     parser.add_argument('-s', '--scale', dest='scale', type=float, default=0.5,
                         help='Downscaling factor of the images')
-    parser.add_argument('-a', '--data-augmentation', dest='dataaugmentation', type=str, default="",
-                        help='Use image augmentation on the original dataset. "bcgsF" for all the transformations (b brightness, c contrast, g gamma, s saturation, F horizontal flip)')
-    parser.add_argument('-t', '--threshold-eval', dest='thresholdeval', type=float, default=0.5,
-                        help='Threshold applied to the confident score of the predicted mask in order to evaluate the Dice coefficient')
+    parser.add_argument('-t', '--human-test', action='store_true', default=False,
+                        help='Test with humanly-annotated data if True')
 
     return parser.parse_args()
 
 
 if __name__ == '__main__':
+    """Process call from the CLI"""
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     args = get_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 
-    # Change here to adapt to your data
     # n_channels=3 for RGB images
     # n_classes is the number of probabilities you want to get per pixel
     #   - For 1 class and background, use n_classes=1
@@ -231,13 +209,13 @@ if __name__ == '__main__':
 
     try:
         train_net(net=net,
+                  datadir=args.datadir,
                   epochs=args.epochs,
                   batch_size=args.batchsize,
                   lr=args.lr,
                   device=device,
                   img_scale=args.scale,
-                  data_aug=args.dataaugmentation,
-                  threshold_eval=args.thresholdeval)
+                  humantest=args.human_test)
     except KeyboardInterrupt:
         torch.save(net.state_dict(), 'INTERRUPTED.pth')
         logging.info('Saved interrupt')

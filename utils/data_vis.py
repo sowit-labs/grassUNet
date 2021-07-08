@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
-
 def plot_img_and_mask(img, mask):
+    """Visualization of the output mask next to the input image"""
     classes = mask.shape[2] if len(mask.shape) > 2 else 1
     fig, ax = plt.subplots(1, classes + 1)
     ax[0].set_title('Input image')

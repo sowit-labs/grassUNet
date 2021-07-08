@@ -10,17 +10,18 @@ from torchvision import transforms
 
 from unet import UNet
 from utils.data_vis import plot_img_and_mask
-from utils.dataset import LAIDataset
+from utils.dataset import PAIDataset
 
 
 def predict_img(net,
                 full_img,
                 device,
                 scale_factor=1,
-                out_threshold=0.5):
+                thresholding=True):
+    """Function to predict a segmentation mask from an image"""
     net.eval()
 
-    img = torch.from_numpy(LAIDataset.preprocess(full_img, scale_factor))
+    img = torch.from_numpy(PAIDataset.preprocess(full_img, scale_factor))
 
     img = img.unsqueeze(0)
     img = img.to(device=device, dtype=torch.float32)
@@ -46,13 +47,14 @@ def predict_img(net,
         probs = tf(probs.cpu())
         full_mask = probs.squeeze().cpu().numpy()
     
-    if np.isnan(out_threshold):
+    if not thresholding:
         return full_mask
 
-    return full_mask > out_threshold
+    return full_mask > 0.5
 
 
 def get_args():
+    """Arguments for the CLI"""
     parser = argparse.ArgumentParser(description='Predict masks from input images',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--model', '-m', default='MODEL.pth',
@@ -61,7 +63,7 @@ def get_args():
     parser.add_argument('--input', '-i', metavar='INPUT', nargs='+',
                         help='filenames of input images', required=True)
 
-    parser.add_argument('--output', '-o', metavar='INPUT', nargs='+',
+    parser.add_argument('--output', '-o', metavar='OUTPUT', nargs='+',
                         help='Filenames of ouput images')
     parser.add_argument('--viz', '-v', action='store_true',
                         help="Visualize the images as they are processed",
@@ -69,9 +71,9 @@ def get_args():
     parser.add_argument('--no-save', '-n', action='store_true',
                         help="Do not save the output masks",
                         default=False)
-    parser.add_argument('--mask-threshold', '-t', type=float,
-                        help="Minimum probability value to consider a mask pixel white. Use NaN to get probability mask",
-                        default=0.5)
+    parser.add_argument('--no-thresholding', '-t', action='store_true',
+                        help="Return the confidence masks",
+                        default=False)
     parser.add_argument('--scale', '-s', type=float,
                         help="Scale factor for the input images",
                         default=0.5)
@@ -101,6 +103,7 @@ def mask_to_image(mask):
 
 
 if __name__ == "__main__":
+    """Process call from the CLI"""
     args = get_args()
     in_files = args.input
     out_files = get_output_filenames(args)
@@ -124,7 +127,7 @@ if __name__ == "__main__":
         mask = predict_img(net=net,
                            full_img=img,
                            scale_factor=args.scale,
-                           out_threshold=args.mask_threshold,
+                           thresholding=not args.no_thresholding,
                            device=device)
 
         if not args.no_save:
