@@ -12,7 +12,7 @@ The fails of our model are on the thin blades and, principally, on the speculari
 
 The project code is widely-based on the [milesial](https://github.com/milesial/Pytorch-UNet)'s one.
 
-![](LAI57.png "Custom apparatus used to hold the phones at a zenith angle of 57.5° for image capture")
+![](LAI57.jpg "Custom apparatus used to hold the phones at a zenith angle of 57.5° for image capture")
 
 ## Usage
 **Note : Use Python 3.7 or newer**
