@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
+import piexif
 from torchvision import transforms
 
 from unet import UNet
@@ -131,9 +132,18 @@ if __name__ == "__main__":
                            device=device)
 
         if not args.no_save:
+            # load exif data
+            exif_bytes = None
+            if "exif" in img.info.keys():
+                exif_dict = piexif.load(img.info["exif"])
+                exif_bytes = piexif.dump(exif_dict)
+        
             out_fn = out_files[i]
             result = mask_to_image(mask)
-            result.save(out_files[i])
+            if exif_bytes is not None:
+                result.save(out_files[i], exif=exif_bytes)
+            else:
+                result.save(out_files[i])
 
             logging.info("Mask saved to {}".format(out_files[i]))
 
