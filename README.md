@@ -1,18 +1,22 @@
 # grassUNet: *semantic segmentation for upward photos of plant canopy with PyTorch*
 
-![](result.png "input and output for a random image in the test dataset")
+![](assets/result.png "input and output for a random image in the test dataset")
 
 Custom implementation of the [U-Net](https://arxiv.org/abs/1505.04597) model for plant/sky semantic segmentation for upward photos taken from underneath plant canopy. Runs with Python 3.7.9 and PyTorch 1.7.1. This project is aimed to be used combinatory with the [CAN-EYE software](https://www6.paca.inrae.fr/can-eye) in order to compute biological variables such as Plant Area Index. It was supported by the R&D department of [SOWIT](https://www.sowit.fr/).
 
-To train this model, a dataset of 2170 photos taken at a zenith angle of 57.5° was used. Photos were acquired with regular smartphones (Moto E4 Plus, Infinix X608, Huawei Mate 10 Lite) held with a custom apparatus at two different developmental stages (Zadoks Z30 and Z39) in three northern Morocco bread wheat plots sown with three different varieties during February and March 2020. The associated masks were semi-automatically generated with [CAN-EYE](https://www6.paca.inrae.fr/can-eye) and so, are noised. The dataset was splitted in 80% training, 10% validation and 10% test sets. Our training data were augmented with various transformations: brightness, contrast, gamma and saturation variations for the colorimetric ones, and horizontal flip, rotation and shearing for the geometrical ones. Photos resolution was 4K, but scaled by 0.125 for memory use.
+To train this model, a dataset of 2170 photos taken at a zenith angle of 57.5° was used. Photos were acquired with regular smartphones (Moto E4 Plus, Infinix X608, Huawei Mate 10 Lite) held with a custom apparatus at two different developmental stages (Zadoks Z30 and Z39) in three northern Morocco bread wheat plots sown with three different varieties during February and March 2020.
+![](assets/LAI57.jpg "Custom apparatus used to hold the phones at a zenith angle of 57.5° for image capture")
 
-The model was trained from scratch with 5208 images (1736 original images + data augmentation) on 5 epochs and scored a [dice coefficient](https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient) of 91.4% on 217 test images with semi-automatically generated masks, and 94.2% on 17 humanly-annotated images. The better result on the humanly-annotated tests could be explained by the better generalization of our model than one of the CAN-EYE semi-automatic segmentation step. Preliminary results indicate this segmentation model performs on bread wheat at least as well as the semi-automatic segmentation proposed by CAN-EYE.
+The associated masks of each photos were semi-automatically generated with [CAN-EYE](https://www6.paca.inrae.fr/can-eye) and so, are noised. The dataset was splitted in 80% training, 10% validation and 10% test sets. Our training data were augmented with various transformations: brightness, contrast, gamma and saturation variations for the colorimetric ones, and horizontal flip, rotation and shearing for the geometrical ones. Photos resolution was 4K, but scaled by 0.125 for memory use.
+
+The model was trained from scratch with 5208 images (1736 original images + data augmentation) on 5 epochs and scored a [dice coefficient](https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient) of 91.4% on 217 test images with semi-automatically generated masks, and 94.2% on 17 humanly-annotated images. The better result on the humanly-annotated tests could be explained by the better generalization of our model than one of the CAN-EYE semi-automatic segmentation step. Preliminary results indicate this segmentation model performs on bread wheat at least as well as the semi-automatic segmentation proposed by CAN-EYE. It generalizes well, as the below picture with corn crops shows it, even if testing with other agricultural plants remains to do.
+
+![](assets/corn.png "Model trained on wheat pictures generalizes well on corn photos")
 
 The fails of our model are on the thin blades and, principally, on the specularities of some leaves. This score could be improved with more precisely-annotated data, more training, other data augmentation, fine tuning, playing with CRF post-processing, or using larger images to distinguish faint shades (more memory required). 
 
 The project code is widely-based on the [milesial](https://github.com/milesial/Pytorch-UNet)'s one.
 
-![](LAI57.jpg "Custom apparatus used to hold the phones at a zenith angle of 57.5° for image capture")
 
 ## Usage
 **Note : Use Python 3.7 or newer**
@@ -97,7 +101,7 @@ You can visualize in real time the train and test losses, the weights and gradie
 The model has be trained from scratch on a NVIDIA T4 16GB.
 Predicting images of 520\*390 takes approximatively 1.5GB of memory as shown on the below figure. This curve represents the theoretical peak memory during inference as a function of the scale factor for a 4160\*3120 image. It slightly underestimate the memory cost but it's a rather good approximation.
 
-![](inference_memory.png "Theoretical peak memory during inference")
+![](assets/inference_memory.png "Theoretical peak memory during inference")
 
 Training takes more, so if you are a few MB shy of memory, consider turning off all graphical displays.
 This assumes you use bilinear up-sampling, and not transposed convolution in the model.
