@@ -35,7 +35,7 @@ def train_net(net,
               lr=0.001,
               save_cp=True,
               img_scale=0.5,
-              humantest=True):
+              humantest=False):
     """Function to train the U-Net segmentation model from a dataset"""
 
     transforms = None
@@ -127,7 +127,7 @@ def train_net(net,
                         writer.add_images('masks/true', true_masks, global_step)
                         writer.add_images('masks/pred', torch.sigmoid(masks_pred) > 0.5, global_step)
                         
-        test_score = eval_net(net, test_loader, device, threshold_eval)
+        test_score = eval_net(net, test_loader, device)
         if net.n_classes > 1:
             logging.info('Test cross entropy: {}'.format(test_score))
             writer.add_scalar('Loss/test', test_score, global_step)
@@ -136,7 +136,7 @@ def train_net(net,
             writer.add_scalar('Dice/test', test_score, global_step)
         
         if humantest:
-            test_hum_score = eval_net(net, test_hum_loader, device, threshold_eval)
+            test_hum_score = eval_net(net, test_hum_loader, device)
             if net.n_classes > 1:
                 logging.info('Test human cross entropy: {}'.format(test_hum_score))
                 writer.add_scalar('Loss/testHuman', test_hum_score, global_step)
