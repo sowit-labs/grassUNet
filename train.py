@@ -52,7 +52,7 @@ def train_net(net,
     if humantest:
         test_hum_loader = DataLoader(dataset_test_hum, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
 
-    writer = SummaryWriter(comment=f'LR_{lr}_BS_{batch_size}_SCALE_{img_scale}_AUG_{data_aug}')
+    writer = SummaryWriter(comment=f'LR_{lr}_BS_{batch_size}_SCALE_{img_scale}')
     global_step = 0
 
     logging.info(f'''Starting training:
