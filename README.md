@@ -2,7 +2,7 @@
 
 ![](assets/result.png "input and output for a random image in the test dataset")
 
-Custom implementation of the [U-Net](https://arxiv.org/abs/1505.04597) model for plant/sky semantic segmentation for upward photos taken from underneath plant canopy. Runs with Python 3.7.9 and PyTorch 1.7.1. This project is aimed to be used combinatory with the [CAN-EYE software](https://www6.paca.inrae.fr/can-eye) in order to compute biological variables such as Plant Area Index. It was supported by the R&D department of [SOWIT](https://www.sowit.fr/).
+Custom implementation of the [U-Net](https://arxiv.org/abs/1505.04597) model for plant/sky semantic segmentation for upward photos taken from underneath plant canopy. Runs with Python 3.7.9 and PyTorch 1.7.1. This project is aimed to be used combinatory with the `pai57.py` script in order to compute biological variables such as Plant Area Index. It was supported by the R&D department of [SOWIT](https://www.sowit.fr/).
 
 To train this model, a dataset of 2170 photos taken at a zenith angle of 57.5° was used. Photos were acquired with regular smartphones (Moto E4 Plus, Infinix X608, Huawei Mate 10 Lite) held with a custom apparatus at two different developmental stages (Zadoks Z30 and Z39) in three northern Morocco bread wheat plots sown with three different varieties during February and March 2020.
 ![](assets/LAI57.jpg "Custom apparatus used to hold the phones at a zenith angle of 57.5° for image capture")
@@ -106,9 +106,49 @@ Predicting images of 520\*390 takes approximatively 1.5GB of memory as shown on 
 Training takes more, so if you are a few MB shy of memory, consider turning off all graphical displays.
 This assumes you use bilinear up-sampling, and not transposed convolution in the model.
 
+## Calculation of biophysical variables
+
+The `pai57.py` script allows the calculation of some biophysical variables for mask of images taken at 57.5° as the gap fraction and the plant area index (PAI). The calculation is based on [CAN-EYE](https://www6.paca.inrae.fr/can-eye), a free imaging software developed since 2003 by [INRAE](https://www.inrae.fr/en) (french National Research Institute for Agriculture, Food and Environment) to extract the following canopy structure characteristics. You can find the detailed formulas in the [CAN-EYE user manual](https://www6.paca.inrae.fr/can-eye/Documentation/Documentation) or in the [research paper by Weiss and al](https://doi.org/10.1016/j.agrformet.2003.08.001).
+
+The script can compute either folder and single image. The ouput is a text report located in the same path of the input.
+
+```
+> python pai57.py -h
+usage: pai57.py [-h] -i I -l FOCAL -W SENSOR_WIDTH -H SENSOR_HEIGHT [-f FOV]
+                [--veg-color VEG] [--sky-color SKY] [--gap-color GAP]
+                [-c CELL_SIZE] [-n]
+
+Process biophysical variables from 57.5° vegetation masks
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i I, --input I       Input directory path or input mask (default: None)
+  -l FOCAL, --focal-length FOCAL
+                        Focal length (mm) (default: None)
+  -W SENSOR_WIDTH, --sensor-width SENSOR_WIDTH
+                        Image sensor width (mm) (default: None)
+  -H SENSOR_HEIGHT, --sensor-height SENSOR_HEIGHT
+                        Image sensor height (mm) (default: None)
+  -f FOV, --fov FOV     This allows extracting the useful part of the images,
+                        i.e, 0° ± fov° to compute the cover fraction at 57°.
+                        (°) (default: 10)
+  --veg-color VEG       The vegetation color in the mask image [0-255]
+                        (default: 255)
+  --sky-color SKY       The sky color in the mask image [0-255] (default: 0)
+  --gap-color GAP       The gap color in the mask image [0-255] (default: 100)
+  -c CELL_SIZE, --cell-size CELL_SIZE
+                        The side size of a square-shaped cell (pxl) (default:
+                        30)
+  -n, --no-correction   If True no apply optical correction and FOV due to the
+                        lens (default: False)
+```
+
+Note: if focal length, sensor width and sensor height are equal to 0, no optical correction will be applied. Another way is the `-n` argument, no matter focal length and given sensor size.
+
 ---
 
 Code based on GitHub repository by Alexandre Milesi: [https://github.com/milesial/Pytorch-UNet](https://github.com/milesial/Pytorch-UNet) \
-Original paper by Olaf Ronneberger, Philipp Fischer, Thomas Brox: [https://arxiv.org/abs/1505.04597](https://arxiv.org/abs/1505.04597)
+Original U-Net paper by Olaf Ronneberger, Philipp Fischer, Thomas Brox: [https://arxiv.org/abs/1505.04597](https://arxiv.org/abs/1505.04597) \
+Original LAI determination paper by M. Weiss, F. Baret, G.J. Smith, I. Jonckheere, P. Coppin: [https://doi.org/10.1016/j.agrformet.2003.08.001](https://doi.org/10.1016/j.agrformet.2003.08.001).
 
 ![network architecture](https://i.imgur.com/jeDVpqF.png)
