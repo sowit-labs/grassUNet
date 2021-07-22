@@ -4,8 +4,11 @@ import math
 
 import argparse
 import os
+import sys
 import glob
 from tqdm import tqdm
+
+from string import Template
 
 from datetime import date
 
@@ -21,13 +24,7 @@ class DP57:
         self.mask = Image.open(self.mask_path).convert('L')
         w,h = self.mask.size
         
-        tags=self.mask.getexif()
-        if 37386 in tags.keys():
-            focal_length=tags[37386]
-        else:
-            focal_length=0
-                                      
-        self.param(focal_length=focal_length,
+        self.param(focal_length=0,
                         img_sensor_w=0,
                         img_sensor_h=0,
                         fov=10,#the field of view to take account
@@ -108,6 +105,8 @@ def get_args():
                         help='The side size of a square-shaped cell (pxl)', dest='cellsize')
     parser.add_argument('-n', '--no-correction', action='store_true', default=False,
                         help='If True no apply optical correction and FOV due to the lens')
+    parser.add_argument('-o','--output-format', metavar='FORMAT', type=str, default='txt',
+                        help="The output format ('txt' or 'html')", dest='format')
 
     return parser.parse_args()
 
@@ -127,94 +126,106 @@ if __name__ == '__main__':
     else:
         input_masks = [args.input]
         
+    if len(input_masks)==0:
+        print("No input image found.")
+        sys.exit()
+        
+    if str.lower(args.format)=='html':
+        extension='.html'
+    else:
+        extension='.txt'
+        
     #Get Camera model & Image size
     model="Unknown"
     size=(0,0)
-    if len(input_masks)>0:
-        tmp = Image.open(input_masks[0])
-        if 272 in tmp.getexif().keys():
-            model = tmp.getexif()[272]
-        size = tmp.size
-        del tmp
+
+    tmp = Image.open(input_masks[0])
+    if 272 in tmp.getexif().keys():
+        model = tmp.getexif()[272]
+    size = tmp.size
+    del tmp
     
     #Set output path
     if os.path.isdir(args.input):
-        output_path = os.path.join(os.path.dirname(os.path.relpath(args.input)),f"P57_{os.path.basename(os.path.dirname(args.input))}_output.txt")
+        dir_name = os.path.split(args.input)[1] if len(os.path.basename(args.input))!=0 else os.path.split(os.path.split(args.input)[0])[1]
+        output_path = os.path.join(args.input,f"P57_{dir_name}_output{extension}")
     else:
-        output_path = os.path.join(os.path.dirname(os.path.relpath(args.input)),f"P57_{os.path.splitext(os.path.basename(args.input))[0]}_output.txt")
+        output_path = os.path.join(os.path.dirname(os.path.relpath(args.input)),f"P57_{os.path.splitext(os.path.basename(args.input))[0]}_output{extension}")
     
     #Write output header
     with open(output_path,'w') as output:
-        output.write(f"Input: {args.input}\n\n")
-        output.write("GENERAL INFORMATION\n")
-        output.write(f"Processing date: {date.today()}\n")
-        output.write(f"Camera model: {model}\n\n")
         
-        output.write("GENERAL PARAMETERS\n")
-        output.write(f"Vegetation color: {args.veg}\n")
-        output.write(f"Sky color: {args.sky}\n")
-        output.write(f"Gap color: {args.gap}\n\n")
-
-        output.write("CALIBRATION PARAMETERS\n")
-        output.write(f"Image size (W*H): {size}\n")
         if not args.no_correction:
-            output.write(f"Image sensor size (W*H mm): {(args.sensorwidth,args.sensorheight)}\n")
-            output.write(f"Focal length (mm): {args.focallength}\n")
-            output.write(f"FOV (°): {args.fov}\n")
+            sensor_size = (args.sensorwidth,args.sensorheight)
+            focal = args.focallength
+            fov = args.fov
         else:
-            output.write("Process on full image. No optical correction.\n")
-        output.write(f"Resolution for clumping (pxl): {args.cellsize}\n\n")
-        
-        output.write("SELECTED IMAGES\n")
-        output.write("File,\tP0(57.5°),\tEffective PAI(57.5°),\tTrue PAI (PAIsat=8),\tTrue PAI (PAIsat=9),\tTrue PAI (PAIsat=10),\tTrue PAI (PAIsat=11),\tTrue PAI (PAIsat=12)\n")
+            sensor_size = "No optical correction"
+            focal = "No optical correction"
+            fov = "No optical correction"
         
         #Compute the biophysical variables for each input images
         res = np.zeros((len(input_masks),7))
         with tqdm(total=len(input_masks)) as pbar:
             for i in range(len(input_masks)):
+            
                 dp=DP57(input_masks[i], vegColor=args.veg, skyColor=args.sky, gapColor=args.gap)
                 if not args.no_correction:
                     dp.param(focal_length=args.focallength, img_sensor_w=args.sensorwidth, img_sensor_h=args.sensorheight, fov=args.fov, cell_size=args.cellsize)
                 else:
                     dp.param(focal_length=0, img_sensor_w=0, img_sensor_h=0, fov=0, cell_size=args.cellsize)
                 
-                output.write(f"{input_masks[i]},\t")
                 res[i,0] = dp.P0()
-                output.write(f"{round(res[i,0],DECIMAL)},\t")
-                
                 if res[i,0]==0:
-                    output.write("NaN, NaN, NaN, NaN, NaN, NaN\n")
+                    res[i,1:]=np.nan
                     continue
-                
                 res[i,1] = dp.PAI57()
-                output.write(f"{round(res[i,1],DECIMAL)},\t")
                 res[i,2] = dp.PAItrue(PAIsat=8)
-                output.write(f"{round(res[i,2],DECIMAL)},\t")
                 res[i,3] = dp.PAItrue(PAIsat=9)
-                output.write(f"{round(res[i,3],DECIMAL)},\t")
                 res[i,4] = dp.PAItrue(PAIsat=10)
-                output.write(f"{round(res[i,4],DECIMAL)},\t")
                 res[i,5] = dp.PAItrue(PAIsat=11)
-                output.write(f"{round(res[i,5],DECIMAL)},\t")
                 res[i,6] = dp.PAItrue(PAIsat=12)
-                output.write(f"{round(res[i,6],DECIMAL)}\n")
                 
                 pbar.update()
+                
+    if str.lower(args.format)=="html":
+        res_repr = '\n'.join(
+                            f'<tr><td style="font-weight:bold; font-size:small; font-family:initial;">{input_masks[i]}</td><td  style="font-family:initial;" align="center">' \
+                                + '</td><td style="font-family:initial;" align="center">'.join(f'%0.{DECIMAL}f' %x for x in res[i]) \
+                                + '</td></tr>' \
+                            for i in range(len(res)))
+        average_repr = '<tr><td style="font-family:initial;" align="center">' \
+                        + '</td><td style="font-family:initial;" align="center">'.join(f'%0.{DECIMAL}f' %x for x in np.mean(res,axis=0)) \
+                        + '</td></tr>'
         
-        if len(input_masks)>0:
-            output.write("\nCLASSIFICATION\n")
-            output.write(f"Sky: {round(np.mean(res[:,0])*100,DECIMAL)}%\n")
-            output.write(f"Green vegetation: {round(100-np.mean(res[:,0])*100,DECIMAL)}%\n\n")
-            
-            output.write("AVERAGE BIOPHYSICAL VARIABLES\n")
-            output.write("P0(57.5°),\tEffective PAI(57.5°),\tTrue PAI (PAIsat=8),\tTrue PAI (PAIsat=9),\tTrue PAI (PAIsat=10),\tTrue PAI (PAIsat=11),\tTrue PAI (PAIsat=12)\n")
-            output.write(f"{round(np.mean(res[:,0]),DECIMAL)},\t")
-            output.write(f"{round(np.mean(res[:,1]),DECIMAL)},\t")
-            output.write(f"{round(np.mean(res[:,2]),DECIMAL)},\t")
-            output.write(f"{round(np.mean(res[:,3]),DECIMAL)},\t")
-            output.write(f"{round(np.mean(res[:,4]),DECIMAL)},\t")
-            output.write(f"{round(np.mean(res[:,5]),DECIMAL)},\t")
-            output.write(f"{round(np.mean(res[:,6]),DECIMAL)}\n")
+    else:
+        #txt format
+        res_repr = '\n'.join(f"{input_masks[i]},\t"+ ',\t'.join(f'%0.{DECIMAL}f' %x for x in res[i]) for i in range(len(res)))
+        average_repr = np.array2string(np.mean(res,axis=0),precision=DECIMAL,separator=",\t")[1:-1]
 
+    d = {
+        'input': args.input,
+        'date': date.today(),
+        'model': model,
+        'veg': args.veg,
+        'sky': args.sky,
+        'gap': args.gap,
+        'img_size': size,
+        'sensor_size': sensor_size,
+        'focal': focal,
+        'fov': fov,
+        'cell_size': args.cellsize,
+        'res': res_repr,
+        'sky_classif': round(np.mean(res[:,0])*100,DECIMAL),
+        'green_classif': round(100-np.mean(res[:,0])*100,DECIMAL),
+        'average': average_repr
+    }
+
+    with open(f"template_pai57/template{extension}", 'r') as template_file:
+        template = Template(template_file.read())
+        output_content = template.substitute(d)
+        
+        with open(output_path,'w') as output:
+            output.write(output_content)
         
     print(f"Output file printed to '{output_path}'.")

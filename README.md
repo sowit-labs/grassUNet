@@ -110,13 +110,13 @@ This assumes you use bilinear up-sampling, and not transposed convolution in the
 
 The `pai57.py` script allows the calculation of some biophysical variables for mask of images taken at 57.5° as the gap fraction and the plant area index (PAI). The calculation is based on [CAN-EYE](https://www6.paca.inrae.fr/can-eye), a free imaging software developed since 2003 by [INRAE](https://www.inrae.fr/en) (french National Research Institute for Agriculture, Food and Environment) to extract the following canopy structure characteristics. You can find the detailed formulas in the [CAN-EYE user manual](https://www6.paca.inrae.fr/can-eye/Documentation/Documentation) or in the [research paper by Weiss and al](https://doi.org/10.1016/j.agrformet.2003.08.001).
 
-The script can compute either folder and single image. The ouput is a text report located in the same path of the input.
+The script can compute either folder o single image. The output is a text or html report located in the same path of the input.
 
 ```
-> python pai57.py -h
+> python .\pai57.py -h
 usage: pai57.py [-h] -i I -l FOCAL -W SENSOR_WIDTH -H SENSOR_HEIGHT [-f FOV]
                 [--veg-color VEG] [--sky-color SKY] [--gap-color GAP]
-                [-c CELL_SIZE] [-n]
+                [-c CELL_SIZE] [-n] [-o FORMAT]
 
 Process biophysical variables from 57.5° vegetation masks
 
@@ -141,6 +141,8 @@ optional arguments:
                         30)
   -n, --no-correction   If True no apply optical correction and FOV due to the
                         lens (default: False)
+  -o FORMAT, --output-format FORMAT
+                        The output format ('txt' or 'html') (default: txt)
 ```
 
 Note: if focal length, sensor width and sensor height are equal to 0, no optical correction will be applied. Another way is the `-n` argument, no matter focal length and given sensor size.
