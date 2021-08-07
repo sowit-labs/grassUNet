@@ -4,7 +4,8 @@
 
 Custom implementation of the [U-Net](https://arxiv.org/abs/1505.04597) model for plant/sky semantic segmentation for upward photos taken from underneath plant canopy. Runs with Python 3.7.9 and PyTorch 1.7.1. This project is aimed to be used combinatory with the `pai57.py` script in order to compute biological variables such as Plant Area Index. It was supported by the R&D department of [SOWIT](https://www.sowit.fr/).
 
-To train this model, a dataset of 2170 photos taken at a zenith angle of 57.5° was used. Photos were acquired with regular smartphones (Moto E4 Plus, Infinix X608, Huawei Mate 10 Lite) held with a custom apparatus at two different developmental stages (Zadoks Z30 and Z39) in three northern Morocco bread wheat plots sown with three different varieties during February and March 2020.
+To train this model, a dataset of 2170 photos taken at a zenith angle of 57.5° was used. Photos were acquired with regular smartphones (Moto E4 Plus, Infinix X608, Huawei Mate 10 Lite) held with a custom apparatus at two different developmental stages (Zadoks Z30 and Z39) in three northern Morocco bread wheat plots sown with three different varieties during February and March 2020. Dataset can be provided upon request at jeremy.lavarenne [at] sowit.fr.
+
 ![](assets/LAI57.jpg "Custom apparatus used to hold the phones at a zenith angle of 57.5° for image capture")
 
 The associated masks of each photos were semi-automatically generated with [CAN-EYE](https://www6.paca.inrae.fr/can-eye) and so, are noised. The dataset was splitted in 80% training, 10% validation and 10% test sets. Our training data were augmented with various transformations: brightness, contrast, gamma and saturation variations for the colorimetric ones, and horizontal flip, rotation and shearing for the geometrical ones. Photos resolution was 4K, but scaled by 0.125 for memory use.
